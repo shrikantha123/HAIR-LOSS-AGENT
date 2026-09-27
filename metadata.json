@@ -1,0 +1,7 @@
+{
+  "name": "Anarva AI Hair Loss Diagnostic Quiz",
+  "description": "Mobile-first clinical hair and scalp assessment quiz with responsive CSS grid layout, visual pattern identification, and downloadable clinical report.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

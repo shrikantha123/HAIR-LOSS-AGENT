@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Scalp Scan — Live Capture</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #0b1215;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* 1. Header Bar */
+    .header-bar {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: #111a1f;
+      border-bottom: 1px solid #202e36;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+    .btn-back:hover {
+      color: #ffffff;
+      background: #1e293b;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+
+    .header-mode-toggle {
+      font-size: 12px;
+      font-weight: 600;
+      color: #2ecc71;
+      text-decoration: none;
+      padding: 4px 10px;
+      border-radius: 16px;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+    }
+
+    /* 2. Status Chips Bar */
+    .chips-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 10px 16px;
+      background: #0f171c;
+      border-bottom: 1px solid #1a272e;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .status-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 4px;
+      border-radius: 12px;
+      transition: background-color 0.25s ease, transform 0.15s ease;
+      background-color: #2ecc71; /* default pass green */
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .chip-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.9;
+    }
+
+    .chip-status {
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* 3. Live Video Viewport */
+    .viewport-section {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .video-feed {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror selfie video */
+    }
+
+    /* Oval / Head Framing Guide */
+    .framing-guide-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .oval-guide {
+      width: 66vw;
+      max-width: 290px;
+      height: 84vw;
+      max-height: 380px;
+      border: 3px dashed rgba(255, 255, 255, 0.8);
+      border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+      box-shadow: 0 0 0 9999px rgba(11, 18, 21, 0.45);
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+    }
+
+    /* Flash Animation Overlay */
+    .flash-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease-out;
+      z-index: 15;
+    }
+
+    /* 4. Instructions & Controls Below Video */
+    .bottom-panel {
+      padding: 14px 16px 20px;
+      background: #111a1f;
+      border-top: 1px solid #1f2c34;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .instruction-text {
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+      min-height: 38px;
+      max-width: 440px;
+    }
+
+    .instruction-text strong {
+      color: #38bdf8;
+    }
+
+    /* 5. Progress Indicator Dots */
+    .progress-bar-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .progress-step-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .progress-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .dot-pending {
+      border: 2px solid #475569;
+      background: transparent;
+    }
+
+    .dot-active {
+      border: 2px solid #2ecc71;
+      background: #2ecc71;
+      box-shadow: 0 0 10px rgba(46, 204, 113, 0.7);
+      transform: scale(1.15);
+    }
+
+    .dot-done {
+      border: 2px solid #2ecc71;
+      background: #2ecc71;
+    }
+
+    .manual-capture-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 360px;
+      justify-content: center;
+    }
+
+    .btn-manual-snap {
+      background: #2ecc71;
+      color: #0b1215;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-manual-snap:hover {
+      background: #27ae60;
+    }
+
+    /* Review Screen Container */
+    #review-screen-container {
+      display: none;
+      padding: 20px 16px;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .review-wrapper {
+      text-align: center;
+    }
+
+    .review-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .review-subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 18px;
+    }
+
+    .review-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .review-card {
+      background: #162229;
+      border: 1px solid #263842;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .review-img-wrap {
+      position: relative;
+      width: 100%;
+      padding-top: 100%;
+      background: #0b1215;
+    }
+
+    .review-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .review-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: #2ecc71;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .review-card-footer {
+      padding: 8px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .review-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .btn-retake {
+      background: #202e38;
+      border: 1px solid #334a58;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-retake:hover {
+      background: #2d414e;
+      color: #fff;
+    }
+
+    .btn-primary-capture {
+      background: #2ecc71;
+      color: #0b1215;
+      font-weight: 800;
+      font-size: 15px;
+      padding: 14px 24px;
+      border-radius: 14px;
+      border: none;
+      width: 100%;
+      max-width: 360px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(46, 204, 113, 0.4);
+    }
+    .btn-primary-capture:hover {
+      background: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <!-- 1. Header Bar -->
+  <header class="header-bar">
+    <button type="button" class="btn-back" id="btn-header-back">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span>Back</span>
+    </button>
+    <h1 class="header-title">Scalp Scan</h1>
+    <a href="./ui-upload.html" class="header-mode-toggle">Upload Mode</a>
+  </header>
+
+  <!-- 2. Three Status Chips -->
+  <div class="chips-container" id="chips-container">
+    <div class="status-chip" id="chip-lighting">
+      <span class="chip-label">Lighting</span>
+      <span class="chip-status">Checking...</span>
+    </div>
+    <div class="status-chip" id="chip-position">
+      <span class="chip-label">Position</span>
+      <span class="chip-status">Align Face</span>
+    </div>
+    <div class="status-chip" id="chip-view">
+      <span class="chip-label">Correct View</span>
+      <span class="chip-status">Front View</span>
+    </div>
+  </div>
+
+  <!-- 3. Live Video Feed Section -->
+  <main class="viewport-section" id="live-feed-section">
+    <video id="live-video" class="video-feed" playsinline autoplay muted></video>
+
+    <!-- Oval Framing Guide -->
+    <div class="framing-guide-overlay">
+      <div class="oval-guide" id="framing-guide-oval"></div>
+    </div>
+
+    <!-- White Flash Animation on Capture -->
+    <div class="flash-overlay" id="flash-overlay"></div>
+  </main>
+
+  <!-- Review / Done State (hidden until capture complete) -->
+  <div id="review-screen-container"></div>
+
+  <!-- 4 & 5. Bottom Instructions & Progress -->
+  <footer class="bottom-panel" id="bottom-panel">
+    <div class="progress-bar-wrap">
+      <div class="progress-step-item">
+        <div class="progress-dot dot-active" id="dot-front"></div>
+        <span>Front</span>
+      </div>
+      <div class="progress-step-item">
+        <div class="progress-dot dot-pending" id="dot-crown"></div>
+        <span>Crown</span>
+      </div>
+      <div class="progress-step-item">
+        <div class="progress-dot dot-pending" id="dot-side"></div>
+        <span>Side</span>
+      </div>
+    </div>
+
+    <p class="instruction-text" id="instruction-text">
+      <strong>Step 1 of 3: Front View</strong> — Position your face within the oval guide and hold steady. Auto-capture will trigger when ready.
+    </p>
+
+    <div class="manual-capture-row">
+      <button type="button" class="btn-manual-snap" id="btn-manual-snap">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+        <span>Snap Now</span>
+      </button>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { LiveCaptureController } from './live-capture.js';
+
+    const videoEl = document.getElementById('live-video');
+    const instructionEl = document.getElementById('instruction-text');
+    const flashEl = document.getElementById('flash-overlay');
+    const reviewContainer = document.getElementById('review-screen-container');
+    const chips = {
+      lighting: document.getElementById('chip-lighting'),
+      position: document.getElementById('chip-position'),
+      view: document.getElementById('chip-view')
+    };
+    const progressDots = [
+      document.getElementById('dot-front'),
+      document.getElementById('dot-crown'),
+      document.getElementById('dot-side')
+    ];
+
+    const controller = new LiveCaptureController({
+      videoElement: videoEl,
+      chips,
+      instructionEl,
+      progressDots,
+      flashEl,
+      reviewContainer,
+      onSubmit: (captured) => {
+        sessionStorage.setItem('anarva_captured_photos', JSON.stringify(captured));
+        alert('All 3 views saved! Ready for hair loss analysis.');
+        window.location.href = '../';
+      }
+    });
+
+    document.getElementById('btn-manual-snap').addEventListener('click', () => {
+      controller.manualCapture();
+    });
+
+    document.getElementById('btn-header-back').addEventListener('click', () => {
+      controller.destroy();
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '../';
+      }
+    });
+
+    // Start live camera stream
+    controller.startCamera();
+  </script>
+</body>
+</html>
